@@ -1,0 +1,34 @@
+name: Commit Testing
+
+on:
+  push:
+    branches-ignore:
+      - main
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-22.04
+    container: openresty/openresty:1.21.4.1-0-focal
+    steps:
+      - name: Install git
+        run: apt-get update && apt-get install -y git
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      # Fix for issue brought up here: https://github.com/actions/checkout/issues/1169
+      - name: Git config workaround
+        run: git config --global --add safe.directory /__w/lua-resty-aws-signature/lua-resty-aws-signature
+      - name: Setup SVU
+        id: svu
+        uses: obfu5c8/action-svu@v1.0.0
+        with:
+          strip-prefix: true
+          svu-version: 2.2.0
+      - name: Build
+        run: make VERSION=${{ steps.svu.outputs.version }} populate_opmrc build
+      - name: Capture tar
+        uses: actions/upload-artifact@v4
+        with:
+          name: lua-resty-aws-signature-${{ steps.svu.outputs.version }}.tar.gz
+          path: lua-resty-aws-signature-${{ steps.svu.outputs.version }}.tar.gz

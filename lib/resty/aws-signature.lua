@@ -18,9 +18,9 @@ local resty_hmac = require('resty.hmac')
 local resty_sha256 = require('resty.sha256')
 local str = require('resty.string')
 
-local _M = { _VERSION = '0.1.2' }
+local _M = {}
 
-local function get_credentials ()
+local function get_credentials()
   local access_key = os.getenv('AWS_ACCESS_KEY_ID')
   local secret_key = os.getenv('AWS_SECRET_ACCESS_KEY')
 
@@ -58,9 +58,9 @@ end
 
 local function get_cred_scope(timestamp, region, service)
   return get_iso8601_basic_short(timestamp)
-    .. '/' .. region
-    .. '/' .. service
-    .. '/aws4_request'
+      .. '/' .. region
+      .. '/' .. service
+      .. '/aws4_request'
 end
 
 local function get_signed_headers()
@@ -76,22 +76,22 @@ end
 local function get_hashed_canonical_request(timestamp, host, uri)
   local digest = get_sha256_digest(ngx.var.request_body)
   local canonical_request = ngx.var.request_method .. '\n'
-    .. uri .. '\n'
-    .. '\n'
-    .. 'host:' .. host .. '\n'
-    .. 'x-amz-content-sha256:' .. digest .. '\n'
-    .. 'x-amz-date:' .. get_iso8601_basic(timestamp) .. '\n'
-    .. '\n'
-    .. get_signed_headers() .. '\n'
-    .. digest
+      .. uri .. '\n'
+      .. '\n'
+      .. 'host:' .. host .. '\n'
+      .. 'x-amz-content-sha256:' .. digest .. '\n'
+      .. 'x-amz-date:' .. get_iso8601_basic(timestamp) .. '\n'
+      .. '\n'
+      .. get_signed_headers() .. '\n'
+      .. digest
   return get_sha256_digest(canonical_request)
 end
 
 local function get_string_to_sign(timestamp, region, service, host, uri)
   return 'AWS4-HMAC-SHA256\n'
-    .. get_iso8601_basic(timestamp) .. '\n'
-    .. get_cred_scope(timestamp, region, service) .. '\n'
-    .. get_hashed_canonical_request(timestamp, host, uri)
+      .. get_iso8601_basic(timestamp) .. '\n'
+      .. get_cred_scope(timestamp, region, service) .. '\n'
+      .. get_hashed_canonical_request(timestamp, host, uri)
 end
 
 local function get_signature(derived_signing_key, string_to_sign)
@@ -104,20 +104,20 @@ local function get_authorization(keys, timestamp, region, service, host, uri)
   local derived_signing_key = get_derived_signing_key(keys, timestamp, region, service)
   local string_to_sign = get_string_to_sign(timestamp, region, service, host, uri)
   local auth = 'AWS4-HMAC-SHA256 '
-    .. 'Credential=' .. keys['access_key'] .. '/' .. get_cred_scope(timestamp, region, service)
-    .. ', SignedHeaders=' .. get_signed_headers()
-    .. ', Signature=' .. get_signature(derived_signing_key, string_to_sign)
+      .. 'Credential=' .. keys['access_key'] .. '/' .. get_cred_scope(timestamp, region, service)
+      .. ', SignedHeaders=' .. get_signed_headers()
+      .. ', Signature=' .. get_signature(derived_signing_key, string_to_sign)
   return auth
 end
 
 local function get_service_and_region(host)
   local patterns = {
-    {'s3.amazonaws.com', 's3', 'us-east-1'},
-    {'s3-external-1.amazonaws.com', 's3', 'us-east-1'},
-    {'s3%-([a-z0-9-]+)%.amazonaws%.com', 's3', nil}
+    { 's3.amazonaws.com',                 's3', 'us-east-1' },
+    { 's3-external-1.amazonaws.com',      's3', 'us-east-1' },
+    { 's3%-([a-z0-9-]+)%.amazonaws%.com', 's3', nil }
   }
 
-  for _,data in ipairs(patterns) do
+  for _, data in ipairs(patterns) do
     local region = host:match(data[1])
     if region ~= nil and data[3] == nil then
       return data[2], region
