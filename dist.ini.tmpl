@@ -1,10 +1,11 @@
 # distribution config for opm packaging
 name = lua-resty-aws-signature
 abstract = AWS signature V4 headers generator
-author = Ludovic Vielle (lukkor)
+author = Adrian Astley (RichieSams)
 is_original = no
 license = apache2
 lib_dir = lib
-repo_link = https://github.com/jobteaser/lua-resty-aws-signature
+repo_link = https://github.com/RichieSams/lua-resty-aws-signature
 main_module = lib/resty/aws-signature.lua
+version = $VERSION
 requires = luajit, openresty/lua-resty-string, jkeys089/lua-resty-hmac
