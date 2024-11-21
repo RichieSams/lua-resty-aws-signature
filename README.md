@@ -1,41 +1,34 @@
 # lua-resty-aws-signature
 
-This library is based on the work of [Alan Grosskurth](https://github.com/grosskur)
-at https://github.com/grosskur/lua-resty-aws.
-It is basically forked from his repository and we change the HMAC library used.
+This library is an evolution of the work done by [JobTeaser](https://github.com/jobteaser/lua-resty-aws-signature) and in turn [Alan Grosskurth](https://github.com/grosskur/lua-resty-aws). It's a fork of their work with additional improvements added on top. Specifically, it adds the ability to sign requests for custom S3 implementations like MinIO or Ceph RGW. And it adds a new method for signing requests with `UNSIGNED-PAYLOAD`.
 
 ## Overview
 
 This library implements request signing using the [AWS Signature
-Version 4][aws4] specification. This signature scheme is used by nearly all AWS
-services.
+Version 4](https://docs.aws.amazon.com/AmazonS3/latest/API/sig-v4-authenticating-requests.html) specification. This signature scheme is used by nearly all AWS
+services and has been adopted as the signature scheme for many other non-AWS services, like [MinIO](https://min.io/docs/minio/linux/administration/identity-access-management.html) or [Ceph RGW](https://docs.ceph.com/en/reef/radosgw/s3/authentication/)
 
 ## AWS documentation
 
-[aws4]: http://docs.aws.amazon.com/general/latest/gr/signature-version-4.html
+http://docs.aws.amazon.com/general/latest/gr/signature-version-4.html
+
+https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_sigv-create-signed-request.html
 
 ## Usage
 
-This library uses standard AWS environment variables as credentials to
-generate [AWS Signature Version 4][aws4].
+This library uses standard AWS environment variables as credentials to generate signed request headers.
 
 ```bash
 export AWS_ACCESS_KEY_ID=AKIDEXAMPLE
 export AWS_SECRET_ACCESS_KEY=AKIDEXAMPLE
 ```
 
-To be accessible in your nginx configuration, these variables should be
-declared in `nginx.conf` file.
+To be accessible in your nginx configuration, these variables should be declared in your `nginx.conf` file. Example:
 
 ```nginx
-#user  nobody;
 worker_processes  1;
 
 error_log  /dev/fd/1 debug;
-#error_log  logs/error.log  notice;
-#error_log  logs/error.log  info;
-
-#pid        logs/nginx.pid;
 
 env AWS_ACCESS_KEY_ID;
 env AWS_SECRET_ACCESS_KEY;
@@ -44,53 +37,60 @@ events {
     worker_connections  1024;
 }
 
-
 http {
     include       mime.types;
     default_type  application/octet-stream;
 
-    #log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
-    #                  '$status $body_bytes_sent "$http_referer" '
-    #                  '"$http_user_agent" "$http_x_forwarded_for"';
-
     access_log  /dev/stdout;
-
-    sendfile        on;
-    #tcp_nopush     on;
-
-    #keepalive_timeout  0;
-    keepalive_timeout  65;
-
-    #gzip  on;
 
     include /etc/nginx/conf.d/*.conf;
 }
 ```
 
-You can then use the library to add AWS Signature headers and `proxy_pass` to a
-given S3 bucket.
+You can then use the library to add AWS Signature headers and `proxy_pass` to a given AWS service bucket. In this example, we do a request to AWS S3.
 
 ```nginx
-set $bucket 'example';
-set $s3_host $bucket.s3-eu-west-1.amazonaws.com;
+set $s3_host my_bucket.s3-eu-west-1.amazonaws.com;
+set $region us-west-1;
+set $service s3
 
 location / {
   access_by_lua_block {
-    require("resty.aws-signature").s3_set_headers(ngx.var.s3_host, ngx.var.uri)
+    local aws = require('resty.aws-signature')
+    aws.s3_set_headers(ngx.var.s3_host, ngx.var.uri, ngx.var.region, ngx.var.service)
   }
 
   proxy_pass https://$s3_host;
 }
 ```
 
-Note: you have to set either `s3-<region>` or `s3` as subdomain of
-`amazonaws.com` depending on your need. `s3` will use `us-east-1` region.
+The default AWS Signature V4 setup requires that you hash the entire request body, and include that hash as part of the signature calculation. This adds an extra layer of protection, because it means the body of the request can't be tampered with in transit, otherwise the signature will be invalid.
+
+However, this hashing does come with a cost: namely you have to buffer and read the entire request body. If you don't want to pay this cost, you can use the `aws_set_headers_unsigned_body()` instead. This utilizes the [`UNSIGNED-PAYLOAD`](https://docs.aws.amazon.com/AmazonS3/latest/API/sig-v4-header-based-auth.html) signing option, which allows us to skip reading / hashing the request body.
+
+```nginx
+set $s3_host my_bucket.s3-eu-west-1.amazonaws.com;
+set $region us-west-1;
+set $service s3
+
+location / {
+  access_by_lua_block {
+    local aws = require('resty.aws-signature')
+    aws.aws_set_headers_unsigned_body(ngx.var.s3_host, ngx.var.uri, ngx.var.region, ngx.var.service)
+  }
+
+  proxy_pass https://$s3_host;
+}
+```
+
 
 ## Contributing
 
 Check [CONTRIBUTING.md](CONTRIBUTING.md) for more information.
 
 ## License
+
+Copyright 2024 Adrian Astley (RichieSams)
 
 Copyright 2018 JobTeaser
 
