@@ -13,10 +13,18 @@ endif
 # Unit / functional testing
 ###############################################################
 
+# OPM doesn't currently have a native function to do local installs
+# So we have to hack it ourselves
+# See: https://github.com/openresty/opm/issues/39
+install_locally:
+	opm install openresty/lua-resty-string
+	opm install jkeys089/lua-resty-hmac
+	cp lib/resty/* /usr/local/openresty/lualib/resty/
+
 TEST_FILES = $(wildcard t/*.t)
 
-test: $(TEST_FILES)
-	prove $^
+test: install_locally
+	prove $(TEST_FILES)
 
 
 ###############################################################

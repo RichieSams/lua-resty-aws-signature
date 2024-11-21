@@ -10,6 +10,8 @@ jobs:
     name: Build
     runs-on: ubuntu-22.04
     container: openresty/openresty:1.21.4.1-0-focal
+    env:
+      GITHUB_TOKEN: unneeded
     steps:
       - name: Install git
         run: apt-get update && apt-get install -y git
@@ -32,3 +34,16 @@ jobs:
         with:
           name: lua-resty-aws-signature-${{ steps.svu.outputs.version }}.tar.gz
           path: lua-resty-aws-signature-${{ steps.svu.outputs.version }}.tar.gz
+  test:
+    name: Test
+    runs-on: ubuntu-22.04
+    container: openresty/openresty:1.21.4.1-0-focal
+    env:
+      LC_ALL: C
+      LANG: C
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up test dependencies
+        run: apt-get update && apt-get install -y cpanminus locales && cpanm Test::Nginx --notest
+      - name: Test
+        run: make test
