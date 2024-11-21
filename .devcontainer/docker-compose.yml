@@ -20,4 +20,4 @@ services:
     environment:
       - LC_ALL=C
       - LANG=C
-      - GITHUB_TOKEN=xxxx
+      - OPM_PUBLISH_TOKEN=xxxx

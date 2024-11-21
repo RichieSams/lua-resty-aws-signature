@@ -11,3 +11,5 @@ permissions:
 jobs:
   release:
     uses: ./.github/workflows/release.yaml
+    secrets:
+      OPM_PUBLISH_TOKEN: ${{ secrets.OPM_PUBLISH_TOKEN }}

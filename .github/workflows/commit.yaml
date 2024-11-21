@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-22.04
     container: openresty/openresty:1.21.4.1-0-focal
     env:
-      GITHUB_TOKEN: unneeded
+      OPM_PUBLISH_TOKEN: unneeded
     steps:
       - name: Install git
         run: apt-get update && apt-get install -y git
