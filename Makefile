@@ -40,7 +40,7 @@ populate_opmrc:
 dist.ini:
 	@envsubst < dist.ini.tmpl > dist.ini
 
-publish:
+publish: dist.ini
 	opm upload
 
 
