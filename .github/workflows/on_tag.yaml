@@ -8,3 +8,5 @@ on:
 jobs:
   release:
     uses: ./.github/workflows/release.yaml
+    with:
+      OPM_PUBLISH_TOKEN: ${{ secrets.OPM_PUBLISH_TOKEN }}

@@ -2,6 +2,9 @@ name: Release
 
 on:
   workflow_call:
+    secrets:
+      OPM_PUBLISH_TOKEN:
+        required: true
 
 permissions:
   contents: write
@@ -10,6 +13,8 @@ jobs:
   release:
     runs-on: ubuntu-22.04
     container: openresty/openresty:1.21.4.1-0-focal
+    env:
+      OPM_PUBLISH_TOKEN: ${{ secrets.OPM_PUBLISH_TOKEN }}
     steps:
       - name: Install git
         run: apt-get update && apt-get install -y git
@@ -30,7 +35,7 @@ jobs:
       - name: Push tag to origin
         run: git push origin ${{ steps.svu.outputs.version }}
       - name: Build
-        run: make VERSION=${{ steps.svu.outputs.version }} populate_opmrc build
+        run: make VERSION=${{ steps.svu.outputs.version }} populate_opmrc publish
       - name: Generate changelog
         id: git-cliff
         uses: orhun/git-cliff-action@v3.0.2

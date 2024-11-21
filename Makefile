@@ -35,12 +35,14 @@ build: dist.ini
 	opm build
 
 populate_opmrc:
-	@printf "github_account=RichieSams\ngithub_token=$(GITHUB_TOKEN)\nupload_server=https://opm.openresty.org\ndownload_server=https://opm.openresty.org\n" > ~/.opmrc
+	@echo Populating $$(realpath -s ~/.opmrc)
+	@printf "github_account=RichieSams\ngithub_token=$(OPM_PUBLISH_TOKEN)\nupload_server=https://opm.openresty.org\ndownload_server=https://opm.openresty.org\n" > ~/.opmrc
+	@cat ~/.opmrc
 
 dist.ini:
 	@envsubst < dist.ini.tmpl > dist.ini
 
-publish:
+publish: dist.ini
 	opm upload
 
 
