@@ -185,10 +185,11 @@ end
 --- Exported module functions
 ---------------------------------
 
----Calculates and sets the approriate request headers for an authenticated AWS request
+---Calculates and returns a table of request headers for an authenticated AWS request
 ---
----This function will read and hash the entire request body to add it to the authentication
----signature. If you want to avoid this overhead, you can use aws_set_headers_unsigned_body()
+---This function takes as an argument the request body so that it can hash it to include in
+---the authentication signature. If you want to avoid this overhead, you can use
+---aws_signed_headers_unsigned_payload()
 ---
 ---Note: This function requires the AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment
 ---      variables to be set. You must expose them to LUA in your nginx.conf using:
@@ -199,22 +200,24 @@ end
 --- ```
 ---
 ---See: https://docs.aws.amazon.com/AmazonS3/latest/API/sig-v4-authenticating-requests.html
----@param host    string The upstream host
----@param uri     string The path portion of the request URI
----@param region  string The AWS region the request will use
----@param service string The AWS service the request will use
-function _M.aws_set_headers(host, uri, region, service)
-  local body_digest = get_sha256_digest(ngx.var.request_body)
+---@param  host    string  The upstream host
+---@param  uri     string  The path portion of the request URI
+---@param  region  string  The AWS region the request will use
+---@param  service string  The AWS service the request will use
+---@param  body    string  The request body
+---@return         table   # The table of headers to apply to your request
+function _M.aws_signed_headers(host, uri, region, service, body)
+  local body_digest = get_sha256_digest(body)
   local timestamp = tonumber(ngx.time())
 
-  _M.aws_set_headers_detailed(host, uri, region, service, body_digest, timestamp)
+  return _M.aws_signed_headers_detailed(host, uri, region, service, body_digest, timestamp)
 end
 
----Calculates and sets the approriate request headers for an authenticated AWS request
+---Calculates and returns a table of request headers for an authenticated AWS request
 ---
 ---This function will skip the request body digest calculation. Which saves the cost and
----time of reading / hashing the entire request body. If you do want the request body digest
----to be part of the signature though, you can use aws_set_headers() instead
+---time of hashing the entire request body. If you do want the request body digest
+---to be part of the signature though, you can use aws_signed_headers() instead
 ---
 ---Note: This function requires the AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment
 ---      variables to be set. You must expose them to LUA in your nginx.conf using:
@@ -225,22 +228,23 @@ end
 --- ```
 ---
 ---See: https://docs.aws.amazon.com/AmazonS3/latest/API/sig-v4-authenticating-requests.html
----@param host    string The upstream host
----@param uri     string The path portion of the request URI
----@param region  string The AWS region the request will use
----@param service string The AWS service the request will use
-function _M.aws_set_headers_unsigned_body(host, uri, region, service)
+---@param  host    string  The upstream host
+---@param  uri     string  The path portion of the request URI
+---@param  region  string  The AWS region the request will use
+---@param  service string  The AWS service the request will use
+---@return         table   # The table of headers to apply to your request
+function _M.aws_signed_headers_unsigned_payload(host, uri, region, service)
   local body_digest = 'UNSIGNED-PAYLOAD'
   local timestamp = tonumber(ngx.time())
 
-  _M.aws_set_headers_detailed(host, uri, region, service, body_digest, timestamp)
+  return _M.aws_signed_headers_detailed(host, uri, region, service, body_digest, timestamp)
 end
 
----Calculates and sets the approriate request headers for an authenticated AWS request
+---Calculates and returns a table of request headers for an authenticated AWS request
 ---
----This function is identical to aws_set_headers(), but it allows you to set the body_digest
+---This function is identical to aws_signed_headers(), but it allows you to set the body_digest
 ---and timestamp yourself. Unless you are doing something very special, you should generally
----just use aws_set_headers() or aws_set_headers_unsigned_body()
+---just use aws_signed_headers() or aws_signed_headers_unsigned_payload()
 ---
 ---Note: This function requires the AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment
 ---      variables to be set. You must expose them to LUA in your nginx.conf using:
@@ -251,21 +255,24 @@ end
 --- ```
 ---
 ---See: https://docs.aws.amazon.com/AmazonS3/latest/API/sig-v4-authenticating-requests.html
----@param host        string  The upstream host
----@param uri         string  The path portion of the request URI
----@param region      string  The AWS region the request will use
----@param service     string  The AWS service the request will use
----@param body_digest string  The SHA256 hex-encoded digest of the request body
----@param timestamp   integer The current time as a Unix timestamp
-function _M.aws_set_headers_detailed(host, uri, region, service, body_digest, timestamp)
+---@param  host        string  The upstream host
+---@param  uri         string  The path portion of the request URI
+---@param  region      string  The AWS region the request will use
+---@param  service     string  The AWS service the request will use
+---@param  body_digest string  The SHA256 hex-encoded digest of the request body
+---@param  timestamp   integer The current time as a Unix timestamp
+---@return            table    # The table of headers to apply to your request
+function _M.aws_signed_headers_detailed(host, uri, region, service, body_digest, timestamp)
   local creds = get_credentials()
 
   local auth = get_authorization(creds, timestamp, region, service, host, uri, body_digest)
 
-  ngx.req.set_header('Authorization', auth)
-  ngx.req.set_header('Host', host)
-  ngx.req.set_header('x-amz-date', get_iso8601_basic(timestamp))
-  ngx.req.set_header('x-amz-content-sha256', body_digest)
+  return {
+    ["Authorization"] = auth,
+    ["Host"] = host,
+    ["x-amz-date"] = get_iso8601_basic(timestamp),
+    ["x-amz-content-sha256"] = body_digest,
+  }
 end
 
 return _M
